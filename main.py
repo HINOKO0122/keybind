@@ -6,7 +6,7 @@ import sys
 import winreg
 from pynput import keyboard
 
-APP_NAME = "RACEN_KeyCounter_Final"
+APP_NAME = "RACEN_KeyCounter_V3"
 DATA_DIR = os.path.join(os.environ['APPDATA'], APP_NAME)
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
@@ -29,7 +29,7 @@ class KeyCounterApp:
         self.setup_window()
         self.create_widgets()
         
-        # ⚙ボタン（透過時も見失わないよう配置）
+        # ⚙ボタン
         self.btn_settings = tk.Button(self.root, text="⚙", command=self.open_settings, bg="white", borderwidth=1)
         self.btn_settings.place(x=785*self.scale, y=5)
 
@@ -45,7 +45,6 @@ class KeyCounterApp:
 
     def apply_transparency(self):
         if self.config.get("transparent", False):
-            # エラー修正：特定の名前ではなく、背景色そのものを透明指定する
             self.root.config(bg="gray") 
             self.root.attributes("-transparentcolor", "gray")
             self.root.attributes("-topmost", True)
@@ -87,7 +86,7 @@ class KeyCounterApp:
 
             # Row 5 (Bottom)
             ["Ctrl", 5, 210, 1.2, "ctrl_l"], ["Win", 55, 210, 1.2, "cmd"], ["Alt", 105, 210, 1.2, "alt_l"], ["無変換", 155, 210, 1.2, "convert"],
-            ["Space", 205, 210, 3.5, "space"], ["変換", 345, 210, 1.2, "non_convert"], ["かな", 395, 210, 1.2, "lang1"], ["Ctrl", 445, 1.2, 1, "ctrl_r"],
+            ["Space", 205, 210, 3.5, "space"], ["変換", 345, 210, 1.2, "non_convert"], ["かな", 395, 210, 1.2, "lang1"], ["Ctrl", 445, 210, 1.2, "ctrl_r"],
             ["←", 620, 210, 1, "left"], ["↓", 660, 210, 1, "down"], ["→", 700, 210, 1, "right"],
         ]
 
@@ -147,14 +146,19 @@ class KeyCounterApp:
         key = winreg.HKEY_CURRENT_USER
         sub = r"Software\Microsoft\Windows\CurrentVersion\Run"
         with winreg.OpenKey(key, sub, 0, winreg.KEY_SET_VALUE) as r:
-            if self.config["startup"]: winreg.SetValueEx(r, APP_NAME, 0, winreg.REG_SZ, sys.executable)
+            if self.config["startup"]:
+                # 実行ファイルのパスを登録
+                exe_path = f'"{sys.executable}"'
+                winreg.SetValueEx(r, APP_NAME, 0, winreg.REG_SZ, exe_path)
             else:
                 try: winreg.DeleteValue(r, APP_NAME)
                 except: pass
 
     def load_json(self, path, default={}):
         if os.path.exists(path):
-            with open(path, "r") as f: return json.load(f)
+            try:
+                with open(path, "r") as f: return json.load(f)
+            except: pass
         return default
 
     def save_json(self, path, data):
