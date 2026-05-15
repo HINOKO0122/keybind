@@ -6,7 +6,7 @@ import sys
 import winreg
 from pynput import keyboard
 
-APP_NAME = "RACEN_KeyCounter_Final_v4"
+APP_NAME = "RACEN_KeyCounter_V5"
 DATA_DIR = os.path.join(os.environ['APPDATA'], APP_NAME)
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
@@ -26,7 +26,7 @@ class KeyCounterApp:
         
         self.scale = self.config["scale"]
         self.labels = {}
-        self.settings_window = None  # 設定画面の重複防止用
+        self.settings_window = None
         
         self.setup_window()
         self.create_widgets()
@@ -42,7 +42,9 @@ class KeyCounterApp:
         self.root.mainloop()
 
     def setup_window(self):
-        self.root.geometry(f"{int(820*self.scale)}x{int(260*self.scale)}")
+        # 画面中央に配置
+        w, h = int(820*self.scale), int(260*self.scale)
+        self.root.geometry(f"{w}x{h}")
         self.apply_transparency()
 
     def apply_transparency(self):
@@ -56,6 +58,11 @@ class KeyCounterApp:
             self.root.attributes("-topmost", self.config["topmost"])
 
     def create_widgets(self):
+        # 既存のボタンを消去（サイズ変更時用）
+        for widget in self.root.winfo_children():
+            if widget != self.btn_settings:
+                widget.destroy()
+
         keys = [
             ["Esc", 5, 5, 1.0, "esc"], ["F1", 75, 5, 1.0, "f1"], ["F2", 115, 5, 1.0, "f2"], ["F3", 155, 5, 1.0, "f3"], ["F4", 195, 5, 1.0, "f4"],
             ["F5", 255, 5, 1.0, "f5"], ["F6", 295, 5, 1.0, "f6"], ["F7", 335, 5, 1.0, "f7"], ["F8", 375, 5, 1.0, "f8"],
@@ -90,6 +97,10 @@ class KeyCounterApp:
             l2 = tk.Label(f, text=str(self.stats.get(k_id, 0)), bg="white", fg="gray", font=("Arial", int(5*self.scale)))
             l2.pack(expand=True)
             self.labels[k_id] = (f, l1, l2)
+        
+        # ⚙ボタンを最前面に
+        self.btn_settings.lift()
+        self.btn_settings.place(x=785*self.scale, y=5)
 
     def on_press(self, key):
         try:
@@ -107,55 +118,51 @@ class KeyCounterApp:
         self.root.after(100, lambda: self.reset(k_id))
 
     def reset(self, k_id):
-        f, l1, l2 = self.labels[k_id]
-        for w in [f, l1, l2]: w.config(bg="white")
+        if k_id in self.labels:
+            f, l1, l2 = self.labels[k_id]
+            for w in [f, l1, l2]: w.config(bg="white")
 
     def open_settings(self):
-        # 既に開いている場合は前面に出すだけ
-        if self.settings_window is not None and self.settings_window.winfo_exists():
+        if self.settings_window and self.settings_window.winfo_exists():
             self.settings_window.lift()
             return
 
         self.settings_window = tk.Toplevel(self.root)
         self.settings_window.title("設定")
-        self.settings_window.geometry("300x350")
+        self.settings_window.geometry("300x380")
         
-        # 設定項目作成用の関数
-        def add_setting(label_text, config_key, toggle_func=None):
-            frame = tk.Frame(self.settings_window)
-            frame.pack(pady=10, fill="x", padx=20)
-            tk.Label(frame, text=label_text).pack(side="left")
-            
-            btn = tk.Button(frame, text="ON" if self.config[config_key] else "OFF", width=8)
-            
-            def on_click():
+        def add_toggle(label_text, config_key, extra_action=None):
+            f = tk.Frame(self.settings_window)
+            f.pack(pady=10, fill="x", padx=20)
+            tk.Label(f, text=label_text).pack(side="left")
+            btn = tk.Button(f, text="ON" if self.config[config_key] else "OFF", width=8)
+            def cmd():
                 self.config[config_key] = not self.config[config_key]
                 btn.config(text="ON" if self.config[config_key] else "OFF")
                 self.save_json(CONFIG_FILE, self.config)
-                if toggle_func: toggle_func()
-                else: self.apply_transparency()
-            
-            btn.config(command=on_click)
+                if extra_action: extra_action()
+                self.apply_transparency()
+            btn.config(command=cmd)
             btn.pack(side="right")
 
-        add_setting("常に最前面：", "topmost")
-        add_setting("背景を透明にする：", "transparent")
-        add_setting("PC起動時に実行：", "startup", self.toggle_startup)
+        add_toggle("常に最前面：", "topmost")
+        add_toggle("背景透過：", "transparent")
+        add_toggle("自動起動：", "startup", self.toggle_startup)
 
         tk.Label(self.settings_window, text="--- サイズ変更 ---").pack(pady=10)
         sc = tk.DoubleVar(value=self.scale)
         combo = ttk.Combobox(self.settings_window, values=[0.5, 0.8, 1.0, 1.2, 1.5], textvariable=sc, state="readonly")
         combo.pack(pady=5)
         
-        def apply_restart():
-            self.config["scale"] = sc.get()
+        def update_size():
+            self.scale = sc.get()
+            self.config["scale"] = self.scale
             self.save_json(CONFIG_FILE, self.config)
-            self.save_json(STATS_FILE, self.stats)
-            messagebox.showinfo("再起動", "設定を保存しました。再起動します。")
-            python = sys.executable
-            os.execl(python, python, *sys.argv)
+            self.setup_window()
+            self.create_widgets()
+            messagebox.showinfo("反映", "サイズを変更しました。")
 
-        tk.Button(self.settings_window, text="適用して再起動", command=apply_restart).pack(pady=20)
+        tk.Button(self.settings_window, text="サイズを即座に適用", command=update_size).pack(pady=20)
 
     def toggle_startup(self):
         key = winreg.HKEY_CURRENT_USER
