@@ -6,7 +6,7 @@ import sys
 import winreg
 from pynput import keyboard
 
-APP_NAME = "RACEN_KeyCounter_V5"
+APP_NAME = "RACEN_KeyCounter_V6"
 DATA_DIR = os.path.join(os.environ['APPDATA'], APP_NAME)
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
@@ -27,14 +27,11 @@ class KeyCounterApp:
         self.scale = self.config["scale"]
         self.labels = {}
         self.settings_window = None
-        
+        self.btn_settings = None # 初期化
+
         self.setup_window()
         self.create_widgets()
         
-        # ⚙ボタン
-        self.btn_settings = tk.Button(self.root, text="⚙", command=self.open_settings, bg="white", borderwidth=1)
-        self.btn_settings.place(x=785*self.scale, y=5)
-
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
         
@@ -42,8 +39,7 @@ class KeyCounterApp:
         self.root.mainloop()
 
     def setup_window(self):
-        # 画面中央に配置
-        w, h = int(820*self.scale), int(260*self.scale)
+        w, h = int(820 * self.scale), int(260 * self.scale)
         self.root.geometry(f"{w}x{h}")
         self.apply_transparency()
 
@@ -58,11 +54,15 @@ class KeyCounterApp:
             self.root.attributes("-topmost", self.config["topmost"])
 
     def create_widgets(self):
-        # 既存のボタンを消去（サイズ変更時用）
+        # 1. 既存のウィジェットをすべて安全に削除
         for widget in self.root.winfo_children():
-            if widget != self.btn_settings:
-                widget.destroy()
+            widget.destroy()
 
+        # 2. ⚙ボタンを先に作成して保持
+        self.btn_settings = tk.Button(self.root, text="⚙", command=self.open_settings, bg="white", borderwidth=1)
+        self.btn_settings.place(x=785 * self.scale, y=5)
+
+        # 3. キーボードの描画
         keys = [
             ["Esc", 5, 5, 1.0, "esc"], ["F1", 75, 5, 1.0, "f1"], ["F2", 115, 5, 1.0, "f2"], ["F3", 155, 5, 1.0, "f3"], ["F4", 195, 5, 1.0, "f4"],
             ["F5", 255, 5, 1.0, "f5"], ["F6", 295, 5, 1.0, "f6"], ["F7", 335, 5, 1.0, "f7"], ["F8", 375, 5, 1.0, "f8"],
@@ -87,6 +87,7 @@ class KeyCounterApp:
             ["←", 620, 210, 1.0, "left"], ["↓", 660, 210, 1.0, "down"], ["→", 700, 210, 1.0, "right"],
         ]
 
+        self.labels = {}
         for item in keys:
             text, x, y, w_mult, k_id = item
             w, h = 38 * w_mult * self.scale, 38 * self.scale
@@ -97,10 +98,6 @@ class KeyCounterApp:
             l2 = tk.Label(f, text=str(self.stats.get(k_id, 0)), bg="white", fg="gray", font=("Arial", int(5*self.scale)))
             l2.pack(expand=True)
             self.labels[k_id] = (f, l1, l2)
-        
-        # ⚙ボタンを最前面に
-        self.btn_settings.lift()
-        self.btn_settings.place(x=785*self.scale, y=5)
 
     def on_press(self, key):
         try:
@@ -112,10 +109,11 @@ class KeyCounterApp:
             self.root.after(0, self.flash, k_id)
 
     def flash(self, k_id):
-        f, l1, l2 = self.labels[k_id]
-        for w in [f, l1, l2]: w.config(bg="red")
-        l2.config(text=str(self.stats[k_id]))
-        self.root.after(100, lambda: self.reset(k_id))
+        if k_id in self.labels:
+            f, l1, l2 = self.labels[k_id]
+            for w in [f, l1, l2]: w.config(bg="red")
+            l2.config(text=str(self.stats[k_id]))
+            self.root.after(100, lambda: self.reset(k_id))
 
     def reset(self, k_id):
         if k_id in self.labels:
@@ -160,7 +158,7 @@ class KeyCounterApp:
             self.save_json(CONFIG_FILE, self.config)
             self.setup_window()
             self.create_widgets()
-            messagebox.showinfo("反映", "サイズを変更しました。")
+            messagebox.showinfo("反映", f"サイズを {self.scale} 倍に変更しました。")
 
         tk.Button(self.settings_window, text="サイズを即座に適用", command=update_size).pack(pady=20)
 
