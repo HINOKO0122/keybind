@@ -6,11 +6,11 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # 最新版に更新
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # 最新版に更新
         with:
-          python-version: '3.9'
+          python-version: '3.11'
       - name: Install dependencies
         run: |
           pip install pynput pyinstaller
@@ -18,7 +18,7 @@ jobs:
         run: |
           pyinstaller --onefile --windowed --name "KeyCounter" main.py
       - name: Upload EXE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # ここがエラーの原因でした。v4に更新！
         with:
           name: KeyCounter-EXE
           path: dist/KeyCounter.exe
