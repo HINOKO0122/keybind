@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import os
 import json
 import sys
@@ -29,7 +29,7 @@ class KeyCounterApp:
         self.setup_window()
         self.create_widgets()
         
-        # ⚙ボタン
+        # ⚙ボタン（設定画面を開く）
         self.btn_settings = tk.Button(self.root, text="⚙", command=self.open_settings, bg="white", borderwidth=1)
         self.btn_settings.place(x=785*self.scale, y=5)
 
@@ -56,30 +56,24 @@ class KeyCounterApp:
     def create_widgets(self):
         # [表示名, x, y, 横幅倍率, ID]
         keys = [
-            # Row 0
             ["Esc", 5, 5, 1.0, "esc"], ["F1", 75, 5, 1.0, "f1"], ["F2", 115, 5, 1.0, "f2"], ["F3", 155, 5, 1.0, "f3"], ["F4", 195, 5, 1.0, "f4"],
             ["F5", 255, 5, 1.0, "f5"], ["F6", 295, 5, 1.0, "f6"], ["F7", 335, 5, 1.0, "f7"], ["F8", 375, 5, 1.0, "f8"],
             ["F9", 435, 5, 1.0, "f9"], ["F10", 475, 5, 1.0, "f10"], ["F11", 515, 5, 1.0, "f11"], ["F12", 555, 5, 1.0, "f12"],
             ["PrtSc", 620, 5, 1.0, "print_screen"], ["ScrLk", 660, 5, 1.0, "scroll_lock"], ["Pause", 700, 5, 1.0, "pause"],
-            # Row 1
             ["半/全", 5, 50, 1.0, "backtick"], ["1", 45, 50, 1.0, "1"], ["2", 85, 50, 1.0, "2"], ["3", 125, 50, 1.0, "3"], ["4", 165, 50, 1.0, "4"], 
             ["5", 205, 50, 1.0, "5"], ["6", 245, 50, 1.0, "6"], ["7", 285, 50, 1.0, "7"], ["8", 325, 50, 1.0, "8"], ["9", 365, 50, 1.0, "9"], ["0", 405, 50, 1.0, "0"],
             ["-", 445, 50, 1.0, "-"], ["^", 485, 50, 1.0, "equal"], ["¥", 525, 50, 1.0, "intl_backslash"], ["BS", 565, 50, 1.4, "backspace"],
             ["Ins", 620, 50, 1.0, "insert"], ["Home", 660, 50, 1.0, "home"], ["PgUp", 700, 50, 1.0, "page_up"],
-            # Row 2
             ["Tab", 5, 90, 1.5, "tab"], ["Q", 65, 90, 1.0, "q"], ["W", 105, 90, 1.0, "w"], ["E", 145, 90, 1.0, "e"], ["R", 185, 90, 1.0, "r"], ["T", 225, 90, 1.0, "t"],
             ["Y", 265, 90, 1.0, "y"], ["U", 305, 90, 1.0, "u"], ["I", 345, 90, 1.0, "i"], ["O", 385, 90, 1.0, "o"], ["P", 425, 90, 1.0, "p"], ["@", 465, 90, 1.0, "bracket_left"],
             ["[", 505, 90, 1.0, "bracket_right"], ["Enter", 555, 90, 1.4, "enter"], 
             ["Del", 620, 90, 1.0, "delete"], ["End", 660, 90, 1.0, "end"], ["PgDn", 700, 90, 1.0, "page_down"],
-            # Row 3
             ["Caps", 5, 130, 1.8, "caps_lock"], ["A", 77, 130, 1.0, "a"], ["S", 117, 130, 1.0, "s"], ["D", 157, 130, 1.0, "d"], ["F", 197, 130, 1.0, "f"],
             ["G", 237, 130, 1.0, "g"], ["H", 277, 130, 1.0, "h"], ["J", 317, 130, 1.0, "j"], ["K", 357, 130, 1.0, "k"], ["L", 397, 130, 1.0, "l"], [";", 437, 130, 1.0, "semicolon"],
             [":", 477, 130, 1.0, "apostrophe"], ["]", 517, 130, 1.0, "backslash"],
-            # Row 4
             ["Shift", 5, 170, 2.2, "shift"], ["Z", 93, 170, 1.0, "z"], ["X", 133, 170, 1.0, "x"], ["C", 173, 170, 1.0, "c"], ["V", 213, 170, 1.0, "v"],
             ["B", 253, 170, 1.0, "b"], ["N", 293, 170, 1.0, "n"], ["M", 333, 170, 1.0, "m"], [",", 373, 170, 1.0, "comma"], [".", 413, 170, 1.0, "period"],
             ["/", 453, 170, 1.0, "slash"], ["ろ", 493, 170, 1.0, "intl_ro"], ["Shift", 533, 170, 1.8, "shift_r"], ["↑", 660, 170, 1.0, "up"],
-            # Row 5
             ["Ctrl", 5, 210, 1.2, "ctrl_l"], ["Win", 55, 210, 1.2, "cmd"], ["Alt", 105, 210, 1.2, "alt_l"], ["無変換", 155, 210, 1.2, "convert"],
             ["Space", 205, 210, 3.5, "space"], ["変換", 345, 210, 1.2, "non_convert"], ["かな", 395, 210, 1.2, "lang1"], ["Ctrl", 445, 210, 1.2, "ctrl_r"],
             ["←", 620, 210, 1.0, "left"], ["↓", 660, 210, 1.0, "down"], ["→", 700, 210, 1.0, "right"],
@@ -117,37 +111,40 @@ class KeyCounterApp:
 
     def open_settings(self):
         win = tk.Toplevel(self.root)
-        win.title("Settings")
-        win.geometry("300x250")
-        tk.Checkbutton(win, text="常に最前面", variable=tk.BooleanVar(value=self.config["topmost"]), 
-                       command=lambda: self.update_config("topmost")).pack(pady=5)
-        tk.Checkbutton(win, text="背景を透過", variable=tk.BooleanVar(value=self.config["transparent"]),
-                       command=lambda: self.update_config("transparent")).pack(pady=5)
-        tk.Checkbutton(win, text="PC起動時に実行", variable=tk.BooleanVar(value=self.config["startup"]),
-                       command=self.toggle_startup).pack(pady=5)
-        tk.Label(win, text="サイズ (適用には再起動)").pack()
+        win.title("設定画面")
+        win.geometry("300x300")
+        
+        # ON/OFFを明示した設定項目
+        def create_toggle(parent, label_text, config_key):
+            frame = tk.Frame(parent)
+            frame.pack(pady=10, fill="x", px=20)
+            tk.Label(frame, text=label_text).pack(side="left")
+            btn_text = tk.StringVar(value="ON" if self.config[config_key] else "OFF")
+            
+            def toggle():
+                self.config[config_key] = not self.config[config_key]
+                btn_text.set("ON" if self.config[config_key] else "OFF")
+                self.save_json(CONFIG_FILE, self.config)
+                self.apply_transparency()
+            
+            tk.Button(frame, textvariable=btn_text, command=toggle, width=10).pack(side="right")
+
+        create_toggle(win, "常に最前面：", "topmost")
+        create_toggle(win, "背景の透過：", "transparent")
+        create_toggle(win, "自動起動：", "startup")
+
+        tk.Label(win, text="--- 画面サイズ変更 ---").pack(pady=5)
         sc = tk.DoubleVar(value=self.scale)
-        ttk.Combobox(win, values=[0.5, 0.8, 1.0, 1.2], textvariable=sc).pack()
-        tk.Button(win, text="適用", command=lambda: self.update_config("scale", sc.get())).pack(pady=10)
+        combo = ttk.Combobox(win, values=[0.5, 0.8, 1.0, 1.2, 1.5], textvariable=sc, state="readonly")
+        combo.pack(pady=5)
+        
+        def apply_size():
+            self.config["scale"] = sc.get()
+            self.save_json(CONFIG_FILE, self.config)
+            messagebox.showinfo("再起動", "サイズを適用して再起動します。")
+            os.execv(sys.executable, ['python'] + sys.argv) # アプリを再起動
 
-    def update_config(self, key, value=None):
-        if value is None: self.config[key] = not self.config[key]
-        else: self.config[key] = value
-        self.save_json(CONFIG_FILE, self.config)
-        self.apply_transparency()
-
-    def toggle_startup(self):
-        self.config["startup"] = not self.config["startup"]
-        self.save_json(CONFIG_FILE, self.config)
-        key = winreg.HKEY_CURRENT_USER
-        sub = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        with winreg.OpenKey(key, sub, 0, winreg.KEY_SET_VALUE) as r:
-            if self.config["startup"]:
-                exe_path = f'"{sys.executable}"'
-                winreg.SetValueEx(r, APP_NAME, 0, winreg.REG_SZ, exe_path)
-            else:
-                try: winreg.DeleteValue(r, APP_NAME)
-                except: pass
+        tk.Button(win, text="サイズを適用して再起動", command=apply_size, bg="#ddd").pack(pady=10)
 
     def load_json(self, path, default={}):
         if os.path.exists(path):
